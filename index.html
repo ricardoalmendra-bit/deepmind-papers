@@ -149,9 +149,16 @@ async function getSummary(id, title) {
   const url = `https://deepmind.google/research/publications/${id}/`;
   const prompt = `Faz um resumo em português de Portugal, claro e conciso (máximo 150 palavras), do artigo científico intitulado: "${title}". Publicado em: ${url}\n\nDestacar: (1) o problema que resolve, (2) a abordagem principal, (3) os resultados ou conclusões principais.`;
 
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+  const isAIzaKey = apiKey.startsWith('AIza');
+  const fetchUrl = isAIzaKey
+    ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
+    : `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`;
+  const fetchHeaders = isAIzaKey
+    ? { 'Content-Type': 'application/json' }
+    : { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey };
+  const res = await fetch(fetchUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: fetchHeaders,
     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
   });
   const data = await res.json();
