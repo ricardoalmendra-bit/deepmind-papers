@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepMind Papers</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f7; color: #1d1d1f; }
+
+  .header { background: #1d1d1f; color: white; padding: 16px 20px; position: sticky; top: 0; z-index: 100; }
+  .header h1 { font-size: 17px; font-weight: 600; }
+  .header p { font-size: 12px; color: #86868b; margin-top: 2px; }
+
+  .api-bar { background: white; padding: 12px 16px; border-bottom: 1px solid #e5e5e5; display: flex; gap: 8px; align-items: center; }
+  .api-bar input { flex: 1; padding: 8px 12px; border: 1px solid #d1d1d6; border-radius: 8px; font-size: 13px; }
+  .api-bar button { padding: 8px 14px; background: #0071e3; color: white; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+
+  .stats-bar { background: white; padding: 10px 16px; border-bottom: 1px solid #e5e5e5; display: flex; gap: 16px; font-size: 12px; color: #86868b; }
+  .stats-bar span b { color: #1d1d1f; }
+
+  .list { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+  .card { background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e5e5; }
+  .card.studied { border-left: 3px solid #30d158; }
+  .card-date { font-size: 11px; color: #86868b; margin-bottom: 4px; }
+  .card-title { font-size: 14px; font-weight: 500; line-height: 1.4; margin-bottom: 10px; }
+  .card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .btn { padding: 6px 12px; border-radius: 7px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid; display: inline-flex; align-items: center; gap: 4px; }
+  .btn-summary { background: #f0f6ff; color: #0071e3; border-color: #b3d4f7; }
+  .btn-listen { background: #f0fff5; color: #1a8f40; border-color: #a3ddb8; }
+  .btn-read { background: #fff8f0; color: #bf5a00; border-color: #f0c890; }
+  .btn-studied { background: #f5f5f7; color: #86868b; border-color: #d1d1d6; }
+  .btn-studied.done { background: #f0fff5; color: #1a8f40; border-color: #a3ddb8; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .summary-box { margin-top: 12px; padding: 12px; background: #f5f5f7; border-radius: 8px; font-size: 13px; line-height: 1.6; display: none; }
+  .summary-box.visible { display: block; }
+  .summary-loading { color: #86868b; font-style: italic; }
+
+  .tts-controls { margin-top: 8px; display: none; gap: 6px; align-items: center; }
+  .tts-controls.visible { display: flex; }
+  .tts-controls button { padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; border: 1px solid #d1d1d6; background: white; }
+
+  .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+  .modal.open { display: flex; }
+  .modal-box { background: white; border-radius: 16px; padding: 20px; width: 100%; max-width: 360px; }
+  .modal-box h3 { font-size: 16px; margin-bottom: 8px; }
+  .modal-box p { font-size: 13px; color: #86868b; margin-bottom: 16px; }
+  .modal-box input { width: 100%; padding: 10px 14px; border: 1px solid #d1d1d6; border-radius: 8px; font-size: 14px; margin-bottom: 12px; }
+  .modal-box .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-box .modal-btns button { padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; border: none; }
+  .btn-cancel { background: #f5f5f7; color: #1d1d1f; }
+  .btn-save { background: #0071e3; color: white; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📄 DeepMind Papers</h1>
+  <p>Lê e ouve resumos das publicações</p>
+</div>
+
+<div class="api-bar">
+  <input type="password" id="apiKey" placeholder="Cola aqui a tua chave Gemini API..." />
+  <button onclick="saveKey()">Guardar</button>
+</div>
+
+<div class="stats-bar">
+  <span>Total: <b id="totalCount">0</b></span>
+  <span>Estudados: <b id="studiedCount">0</b></span>
+  <span>Por ler: <b id="remainCount">0</b></span>
+</div>
+
+<div class="list" id="paperList"></div>
+
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <h3>Chave API Gemini</h3>
+    <p>Obtém a tua chave gratuita em aistudio.google.com/apikey</p>
+    <input type="password" id="modalKey" placeholder="AIza..." />
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-save" onclick="saveFromModal()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PAPERS = [
+  { id: "231466", date: "2026-06-04", label: "4 Jun 2026", title: "Solipsistic superintelligence is unlikely to be cooperative" },
+  { id: "252981", date: "2026-05-28", label: "28 Mai 2026", title: "Gram: Assessing sabotage propensities via automated alignment auditing" },
+  { id: "253391", date: "2026-05-28", label: "28 Mai 2026", title: "Realistic honeypot evaluations for scheming propensity" },
+  { id: "238239", date: "2026-04-25", label: "25 Abr 2026", title: "ProEval: Proactive Failure Discovery and Efficient Performance Estimation for Generative AI Evaluation" },
+  { id: "193694", date: "2026-04-23", label: "23 Abr 2026", title: "Dynamic Reflections: Probing Video Representations with Text Alignment" },
+  { id: "240658", date: "2026-04-22", label: "22 Abr 2026", title: "Image Generators are Generalist Vision Learners" },
+  { id: "146950", date: "2026-03-22", label: "22 Mar 2026", title: "Strategic Tradeoffs Between Humans and AI in Multi-Agent Bargaining" },
+  { id: "231971", date: "2026-03-10", label: "10 Mar 2026", title: "The Abstraction Fallacy: Why AI Can Simulate But Not Instantiate Consciousness" },
+  { id: "225507", date: "2026-02-15", label: "15 Fev 2026", title: "Simplicity and Complexity in Combinatorial Optimization" },
+  { id: "94006",  date: "2026-02-05", label: "5 Fev 2026",  title: "Hybrid neural–cognitive models reveal how memory shapes human reward learning" },
+  { id: "122591", date: "2026-01-09", label: "9 Jan 2026",  title: "TRecViT: A Recurrent Video Transformer" },
+  { id: "141313", date: "2025-12-03", label: "3 Dez 2025",  title: "Capturing Human Preferences with Reward Features" },
+  { id: "42697",  date: "2025-11-21", label: "21 Nov 2025", title: "Imitation Learning is Probably Existentially Safe" },
+  { id: "180362", date: "2025-11-04", label: "4 Nov 2025",  title: "To Mask or to Mirror: Human-AI Alignment in Collective Reasoning" },
+  { id: "210560", date: "2025-10-30", label: "30 Out 2025", title: "A Pragmatic View of AI Personhood" },
+  { id: "160567", date: "2025-09-29", label: "29 Set 2025", title: "AI-Generated Video Detection via Perceptual Straightening" },
+  { id: "203190", date: "2025-09-24", label: "24 Set 2025", title: "Video models are zero-shot learners and reasoners" },
+  { id: "194199", date: "2025-09-24", label: "24 Set 2025", title: "EmbeddingGemma: Powerful and Lightweight Text Representations" },
+  { id: "145314", date: "2025-09-04", label: "4 Set 2025",  title: "Improving cosmological reach of LIGO using Deep Loop Shaping" },
+  { id: "111579", date: "2025-09-03", label: "3 Set 2025",  title: "RoboBallet: Planning for Multi-Robot Reaching with Graph Neural Networks and Reinforcement Learning" },
+  { id: "148245", date: "2025-08-08", label: "8 Ago 2025",  title: "Properties of Algorithmic Information Distance" },
+  { id: "192581", date: "2025-08-01", label: "1 Ago 2025",  title: "Visual Intention Grounding for Egocentric Assistants" },
+  { id: "181976", date: "2025-07-16", label: "16 Jul 2025",  title: "Dialogues Between Technologists and the Art Worlds" },
+  { id: "147939", date: "2025-07-13", label: "13 Jul 2025",  title: "Large Language Models as Rankers, Judges, and Assistants" },
+  { id: "148040", date: "2025-07-13", label: "13 Jul 2025",  title: "SLIM: One-Shot Quantized Sparse Plus Low-Rank Approximation of LLMs" },
+  { id: "126936", date: "2025-07-13", label: "13 Jul 2025",  title: "Long-Form Speech Generation with Spoken Language Models" },
+  { id: "102792", date: "2025-07-01", label: "1 Jul 2025",   title: "Rethinking Example Selection in the Era of Million-Token Models" },
+  { id: "187733", date: "2025-06-26", label: "26 Jun 2025",  title: "Performance Prediction for Large Systems via Text-to-Text Regression" },
+  { id: "81986",  date: "2025-06-23", label: "23 Jun 2025",  title: "LIA: Cost-efficient LLM Inference Acceleration with Intel Advanced Matrix Extensions and CXL" },
+  { id: "122089", date: "2025-06-20", label: "20 Jun 2025",  title: "AuPair: Golden Example Pairs for Code Repair" },
+];
+
+let apiKey = localStorage.getItem('gemini_key') || '';
+let studied = JSON.parse(localStorage.getItem('studied') || '{}');
+let summaries = JSON.parse(localStorage.getItem('summaries') || '{}');
+let currentUtterance = null;
+
+function saveKey() {
+  const k = document.getElementById('apiKey').value.trim();
+  if (k) { apiKey = k; localStorage.setItem('gemini_key', k); alert('Chave guardada!'); document.getElementById('apiKey').value = ''; }
+}
+function saveFromModal() {
+  const k = document.getElementById('modalKey').value.trim();
+  if (k) { apiKey = k; localStorage.setItem('gemini_key', k); closeModal(); }
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+function updateStats() {
+  const s = Object.values(studied).filter(Boolean).length;
+  document.getElementById('totalCount').textContent = PAPERS.length;
+  document.getElementById('studiedCount').textContent = s;
+  document.getElementById('remainCount').textContent = PAPERS.length - s;
+}
+
+async function getSummary(id, title) {
+  if (!apiKey) { document.getElementById('modal').classList.add('open'); return null; }
+  if (summaries[id]) return summaries[id];
+
+  const url = `https://deepmind.google/research/publications/${id}/`;
+  const prompt = `Faz um resumo em português de Portugal, claro e conciso (máximo 150 palavras), do artigo científico intitulado: "${title}". Publicado em: ${url}\n\nDestacar: (1) o problema que resolve, (2) a abordagem principal, (3) os resultados ou conclusões principais.`;
+
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+  });
+  const data = await res.json();
+  if (data.candidates && data.candidates[0]) {
+    const text = data.candidates[0].content.parts[0].text;
+    summaries[id] = text;
+    localStorage.setItem('summaries', JSON.stringify(summaries));
+    return text;
+  }
+  return 'Não foi possível gerar o resumo. Verifica a tua chave API.';
+}
+
+function speak(text, btnEl) {
+  if (currentUtterance) { speechSynthesis.cancel(); currentUtterance = null; }
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'pt-PT';
+  utter.rate = 0.95;
+  currentUtterance = utter;
+  utter.onend = () => { currentUtterance = null; if(btnEl) btnEl.textContent = '🔊 Ouvir'; };
+  speechSynthesis.speak(utter);
+  if(btnEl) btnEl.textContent = '⏹ Parar';
+}
+
+function stopSpeech() { if (currentUtterance) { speechSynthesis.cancel(); currentUtterance = null; } }
+
+function renderCards() {
+  const list = document.getElementById('paperList');
+  list.innerHTML = '';
+  PAPERS.forEach(p => {
+    const isStudied = studied[p.id];
+    const card = document.createElement('div');
+    card.className = 'card' + (isStudied ? ' studied' : '');
+    card.id = 'card-' + p.id;
+    card.innerHTML = `
+      <div class="card-date">${p.label}</div>
+      <div class="card-title">${p.title}</div>
+      <div class="card-actions">
+        <button class="btn btn-summary" onclick="toggleSummary('${p.id}','${p.title.replace(/'/g,"\\'")}',this)">💡 Resumo</button>
+        <button class="btn btn-listen" id="listen-${p.id}" onclick="listenSummary('${p.id}',this)">🔊 Ouvir</button>
+        <button class="btn btn-read" onclick="window.open('https://deepmind.google/research/publications/${p.id}/','_blank')">🔗 Artigo</button>
+        <button class="btn btn-studied ${isStudied ? 'done' : ''}" onclick="toggleStudied('${p.id}',this)">${isStudied ? '✅ Estudado' : '📌 Marcar'}</button>
+      </div>
+      <div class="summary-box" id="summary-${p.id}"></div>
+    `;
+    list.appendChild(card);
+    if (summaries[p.id]) {
+      const box = document.getElementById('summary-' + p.id);
+      box.textContent = summaries[p.id];
+      box.classList.add('visible');
+    }
+  });
+  updateStats();
+}
+
+async function toggleSummary(id, title, btn) {
+  const box = document.getElementById('summary-' + id);
+  if (box.classList.contains('visible') && box.textContent && !box.textContent.includes('A gerar')) {
+    box.classList.remove('visible'); return;
+  }
+  box.classList.add('visible');
+  box.innerHTML = '<span class="summary-loading">A gerar resumo...</span>';
+  btn.disabled = true;
+  const text = await getSummary(id, title);
+  btn.disabled = false;
+  if (text) box.textContent = text;
+}
+
+async function listenSummary(id, btn) {
+  if (currentUtterance) { stopSpeech(); btn.textContent = '🔊 Ouvir'; return; }
+  let text = summaries[id];
+  if (!text) {
+    btn.textContent = '⏳...';
+    btn.disabled = true;
+    const title = PAPERS.find(p => p.id === id)?.title || '';
+    text = await getSummary(id, title);
+    btn.disabled = false;
+    if (!text) { btn.textContent = '🔊 Ouvir'; return; }
+    const box = document.getElementById('summary-' + id);
+    box.textContent = text; box.classList.add('visible');
+  }
+  speak(text, btn);
+}
+
+function toggleStudied(id, btn) {
+  studied[id] = !studied[id];
+  localStorage.setItem('studied', JSON.stringify(studied));
+  btn.textContent = studied[id] ? '✅ Estudado' : '📌 Marcar';
+  btn.className = 'btn btn-studied' + (studied[id] ? ' done' : '');
+  document.getElementById('card-' + id).className = 'card' + (studied[id] ? ' studied' : '');
+  updateStats();
+}
+
+if (apiKey) document.getElementById('apiKey').placeholder = 'Chave guardada ✓ (podes substituir)';
+renderCards();
+</script>
+</body>
+</html>
