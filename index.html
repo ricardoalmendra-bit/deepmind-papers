@@ -151,8 +151,8 @@ async function getSummary(id, title) {
 
   const isAIzaKey = apiKey.startsWith('AIza');
   const fetchUrl = isAIzaKey
-    ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
-    : `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`;
+    ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
+    : `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`;
   const fetchHeaders = isAIzaKey
     ? { 'Content-Type': 'application/json' }
     : { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey };
