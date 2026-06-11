@@ -7,41 +7,40 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f7; color: #1d1d1f; }
-
   .header { background: #1d1d1f; color: white; padding: 16px 20px; position: sticky; top: 0; z-index: 100; }
   .header h1 { font-size: 17px; font-weight: 600; }
   .header p { font-size: 12px; color: #86868b; margin-top: 2px; }
-
   .api-bar { background: white; padding: 12px 16px; border-bottom: 1px solid #e5e5e5; display: flex; gap: 8px; align-items: center; }
   .api-bar input { flex: 1; padding: 8px 12px; border: 1px solid #d1d1d6; border-radius: 8px; font-size: 13px; }
   .api-bar button { padding: 8px 14px; background: #0071e3; color: white; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; white-space: nowrap; }
-
   .stats-bar { background: white; padding: 10px 16px; border-bottom: 1px solid #e5e5e5; display: flex; gap: 16px; font-size: 12px; color: #86868b; }
   .stats-bar span b { color: #1d1d1f; }
-
   .list { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
-
   .card { background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e5e5; }
   .card.studied { border-left: 3px solid #30d158; }
   .card-date { font-size: 11px; color: #86868b; margin-bottom: 4px; }
   .card-title { font-size: 14px; font-weight: 500; line-height: 1.4; margin-bottom: 10px; }
   .card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-  .btn { padding: 6px 12px; border-radius: 7px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid; display: inline-flex; align-items: center; gap: 4px; }
-  .btn-summary { background: #f0f6ff; color: #0071e3; border-color: #b3d4f7; }
-  .btn-listen { background: #f0fff5; color: #1a8f40; border-color: #a3ddb8; }
-  .btn-read { background: #fff8f0; color: #bf5a00; border-color: #f0c890; }
-  .btn-studied { background: #f5f5f7; color: #86868b; border-color: #d1d1d6; }
+  .btn { padding: 6px 12px; border-radius: 7px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid; display: inline-flex; align-items: center; gap: 4px; background: white; }
+  .btn-summary  { background: #f0f6ff; color: #0071e3; border-color: #b3d4f7; }
+  .btn-listen   { background: #f0fff5; color: #1a8f40; border-color: #a3ddb8; }
+  .btn-listen-full { background: #f5f0ff; color: #6b3fa0; border-color: #d0b3f0; }
+  .btn-listen-en { background: #fff0f5; color: #a0305a; border-color: #f0b3cc; }
+  .btn-read     { background: #fff8f0; color: #bf5a00; border-color: #f0c890; }
+  .btn-studied  { background: #f5f5f7; color: #86868b; border-color: #d1d1d6; }
   .btn-studied.done { background: #f0fff5; color: #1a8f40; border-color: #a3ddb8; }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
   .summary-box { margin-top: 12px; padding: 12px; background: #f5f5f7; border-radius: 8px; font-size: 13px; line-height: 1.6; display: none; }
   .summary-box.visible { display: block; }
+  .full-box { margin-top: 8px; padding: 12px; background: #faf5ff; border-radius: 8px; font-size: 13px; line-height: 1.6; display: none; border: 1px solid #e8d5f7; }
+  .full-box.visible { display: block; }
   .summary-loading { color: #86868b; font-style: italic; }
-
-  .tts-controls { margin-top: 8px; display: none; gap: 6px; align-items: center; }
-  .tts-controls.visible { display: flex; }
-  .tts-controls button { padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; border: 1px solid #d1d1d6; background: white; }
-
+  .tts-bar { margin-top: 10px; display: none; align-items: center; gap: 8px; background: #f0fff5; border-radius: 8px; padding: 8px 12px; }
+  .tts-bar.visible { display: flex; }
+  .tts-bar span { font-size: 12px; color: #1a8f40; flex: 1; }
+  .tts-bar button { padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; border: 1px solid #a3ddb8; background: white; color: #1a8f40; }
+  .progress-bar { height: 3px; background: #e5e5e5; border-radius: 2px; flex: 1; }
+  .progress-fill { height: 100%; background: #30d158; border-radius: 2px; width: 0%; transition: width 0.5s; }
   .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
   .modal.open { display: flex; }
   .modal-box { background: white; border-radius: 16px; padding: 20px; width: 100%; max-width: 360px; }
@@ -58,7 +57,7 @@
 
 <div class="header">
   <h1>📄 DeepMind Papers</h1>
-  <p>Lê e ouve resumos das publicações &nbsp;|&nbsp; v1.3 — gemini-2.5-flash</p>
+  <p>Lê e ouve resumos das publicações &nbsp;|&nbsp; v1.5 — gemini-2.5-flash</p>
 </div>
 
 <div class="api-bar">
@@ -77,7 +76,7 @@
 <div class="modal" id="modal">
   <div class="modal-box">
     <h3>Chave API Gemini</h3>
-    <p>Obtém a tua chave gratuita em aistudio.google.com/apikey</p>
+    <p>Obtém a tua chave em aistudio.google.com/apikey</p>
     <input type="password" id="modalKey" placeholder="AIza..." />
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
@@ -123,7 +122,21 @@ const PAPERS = [
 let apiKey = localStorage.getItem('gemini_key') || '';
 let studied = JSON.parse(localStorage.getItem('studied') || '{}');
 let summaries = JSON.parse(localStorage.getItem('summaries') || '{}');
+let fullTexts = JSON.parse(localStorage.getItem('fullTexts') || '{}');
+let fullTextsEn = JSON.parse(localStorage.getItem('fullTextsEn') || '{}');
 let currentUtterance = null;
+let ptVoice = null;
+
+// Carrega a melhor voz PT-PT disponível
+function loadVoice() {
+  const voices = speechSynthesis.getVoices();
+  ptVoice = voices.find(v => v.lang === 'pt-PT') ||
+            voices.find(v => v.lang.startsWith('pt-PT')) ||
+            voices.find(v => v.lang.startsWith('pt')) ||
+            null;
+}
+speechSynthesis.onvoiceschanged = loadVoice;
+loadVoice();
 
 function saveKey() {
   const k = document.getElementById('apiKey').value.trim();
@@ -142,47 +155,103 @@ function updateStats() {
   document.getElementById('remainCount').textContent = PAPERS.length - s;
 }
 
-async function getSummary(id, title) {
+async function callGemini(prompt) {
   if (!apiKey) { document.getElementById('modal').classList.add('open'); return null; }
-  if (summaries[id]) return summaries[id];
-
-  const url = `https://deepmind.google/research/publications/${id}/`;
-  const prompt = `Faz um resumo em português de Portugal, claro e conciso (máximo 150 palavras), do artigo científico intitulado: "${title}". Publicado em: ${url}\n\nDestacar: (1) o problema que resolve, (2) a abordagem principal, (3) os resultados ou conclusões principais.`;
-
-  const isAIzaKey = apiKey.startsWith('AIza');
-  const fetchUrl = isAIzaKey
+  const isAIza = apiKey.startsWith('AIza');
+  const url = isAIza
     ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
     : `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
-  const fetchHeaders = isAIzaKey
+  const headers = isAIza
     ? { 'Content-Type': 'application/json' }
     : { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey };
-  const res = await fetch(fetchUrl, {
-    method: 'POST',
-    headers: fetchHeaders,
+  const res = await fetch(url, {
+    method: 'POST', headers,
     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
   });
   const data = await res.json();
-  if (data.candidates && data.candidates[0]) {
-    const text = data.candidates[0].content.parts[0].text;
-    summaries[id] = text;
-    localStorage.setItem('summaries', JSON.stringify(summaries));
-    return text;
+  if (data.candidates && data.candidates[0])
+    return data.candidates[0].content.parts[0].text;
+  return null;
+}
+
+async function getSummary(id, title) {
+  if (summaries[id]) return summaries[id];
+  const prompt = `Faz um resumo em português de Portugal, claro e conciso (máximo 150 palavras), do artigo científico intitulado: "${title}". URL: https://deepmind.google/research/publications/${id}/\n\nDestacar: (1) o problema que resolve, (2) a abordagem principal, (3) os resultados ou conclusões principais.`;
+  const text = await callGemini(prompt);
+  if (text) { summaries[id] = text; localStorage.setItem('summaries', JSON.stringify(summaries)); }
+  return text || 'Não foi possível gerar o resumo. Verifica a tua chave API.';
+}
+
+async function getFullTextEn(id, title) {
+  if (fullTextsEn[id]) return fullTextsEn[id];
+  const prompt = `You have knowledge of the scientific paper "${title}" published by Google DeepMind (https://deepmind.google/research/publications/${id}/).
+
+Present a complete and detailed version of the paper to be listened to during a long car journey. Include:
+1. Title and context
+2. Introduction and motivation
+3. Methodology and technical approach
+4. Experiments and results
+5. Conclusions and impact
+6. Limitations and future work
+
+Write in fluent natural English for listening (not reading). No bullets, no markdown, only flowing prose. Maximum 800 words.`;
+  const text = await callGemini(prompt);
+  if (text) { fullTextsEn[id] = text; localStorage.setItem("fullTextsEn", JSON.stringify(fullTextsEn)); }
+  return text || "Could not retrieve the full article.";
+}
+
+async function getFullText(id, title) {
+  if (fullTexts[id]) return fullTexts[id];
+  const prompt = `Tens acesso ao conhecimento do artigo científico "${title}" publicado pelo Google DeepMind (https://deepmind.google/research/publications/${id}/). 
+
+Por favor apresenta em português de Portugal uma versão completa e detalhada do artigo para ser lida em voz alta durante uma viagem de carro. Deve incluir:
+1. Título e contexto
+2. Introdução e motivação
+3. Metodologia e abordagem técnica
+4. Experiências e resultados
+5. Conclusões e impacto
+6. Limitações e trabalho futuro
+
+Escreve de forma fluida e natural para ser ouvido (não lido), sem bullets, sem markdown, apenas texto corrido. Máximo 800 palavras.`;
+  const text = await callGemini(prompt);
+  if (text) { fullTexts[id] = text; localStorage.setItem('fullTexts', JSON.stringify(fullTexts)); }
+  return text || 'Não foi possível obter o artigo completo.';
+}
+
+function speak(text, label, barId) {
+  stopSpeech();
+  const bar = document.getElementById(barId);
+  const chunks = text.match(/[^.!?]+[.!?]+/g) || [text];
+  let i = 0;
+
+  function speakChunk() {
+    if (i >= chunks.length) { if(bar) bar.classList.remove('visible'); return; }
+    const utter = new SpeechSynthesisUtterance(chunks[i]);
+    utter.lang = 'pt-PT';
+    utter.rate = 0.92;
+    if (ptVoice) utter.voice = ptVoice;
+    currentUtterance = utter;
+    const pct = Math.round((i / chunks.length) * 100);
+    const fill = bar ? bar.querySelector('.progress-fill') : null;
+    const lbl = bar ? bar.querySelector('.tts-label') : null;
+    if (fill) fill.style.width = pct + '%';
+    if (lbl) lbl.textContent = label + ' — ' + pct + '%';
+    utter.onend = () => { i++; speakChunk(); };
+    speechSynthesis.speak(utter);
   }
-  return 'Não foi possível gerar o resumo. Verifica a tua chave API.';
+
+  if (bar) bar.classList.add('visible');
+  speakChunk();
 }
 
-function speak(text, btnEl) {
-  if (currentUtterance) { speechSynthesis.cancel(); currentUtterance = null; }
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = 'pt-PT';
-  utter.rate = 0.95;
-  currentUtterance = utter;
-  utter.onend = () => { currentUtterance = null; if(btnEl) btnEl.textContent = '🔊 Ouvir'; };
-  speechSynthesis.speak(utter);
-  if(btnEl) btnEl.textContent = '⏹ Parar';
+function stopSpeech() {
+  speechSynthesis.cancel();
+  currentUtterance = null;
+  document.querySelectorAll('.tts-bar').forEach(b => b.classList.remove('visible'));
+  document.querySelectorAll('.btn-listen, .btn-listen-full, .btn-listen-en').forEach(b => {
+    if (b.textContent.includes('Parar') || b.textContent.includes('...')) { if (b.classList.contains('btn-listen-full')) b.textContent = '🎧 Ouvir PT'; else if (b.classList.contains('btn-listen-en')) b.textContent = '🇬🇧 Ouvir EN'; else b.textContent = '🔊 Ouvir resumo'; }
+  });
 }
-
-function stopSpeech() { if (currentUtterance) { speechSynthesis.cancel(); currentUtterance = null; } }
 
 function renderCards() {
   const list = document.getElementById('paperList');
@@ -192,16 +261,25 @@ function renderCards() {
     const card = document.createElement('div');
     card.className = 'card' + (isStudied ? ' studied' : '');
     card.id = 'card-' + p.id;
+    const safeTitle = p.title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
     card.innerHTML = `
       <div class="card-date">${p.label}</div>
       <div class="card-title">${p.title}</div>
       <div class="card-actions">
-        <button class="btn btn-summary" onclick="toggleSummary('${p.id}','${p.title.replace(/'/g,"\\'")}',this)">💡 Resumo</button>
-        <button class="btn btn-listen" id="listen-${p.id}" onclick="listenSummary('${p.id}',this)">🔊 Ouvir</button>
+        <button class="btn btn-summary" onclick="toggleSummary('${p.id}','${safeTitle}',this)">💡 Resumo</button>
+        <button class="btn btn-listen" id="listen-${p.id}" onclick="listenSummary('${p.id}','${safeTitle}',this)">🔊 Ouvir resumo</button>
+        <button class="btn btn-listen-full" id="listen-full-${p.id}" onclick="listenFull('${p.id}','${safeTitle}',this)">🎧 Ouvir PT</button>
+        <button class="btn btn-listen-en" id="listen-en-${p.id}" onclick="listenFullEn('${p.id}','${safeTitle}',this)">🇬🇧 Ouvir EN</button>
         <button class="btn btn-read" onclick="window.open('https://deepmind.google/research/publications/${p.id}/','_blank')">🔗 Artigo</button>
         <button class="btn btn-studied ${isStudied ? 'done' : ''}" onclick="toggleStudied('${p.id}',this)">${isStudied ? '✅ Estudado' : '📌 Marcar'}</button>
       </div>
       <div class="summary-box" id="summary-${p.id}"></div>
+      <div class="full-box" id="full-${p.id}"></div>
+      <div class="tts-bar" id="tts-${p.id}">
+        <span class="tts-label">A reproduzir...</span>
+        <div class="progress-bar"><div class="progress-fill"></div></div>
+        <button onclick="stopSpeech()">⏹ Parar</button>
+      </div>
     `;
     list.appendChild(card);
     if (summaries[p.id]) {
@@ -215,7 +293,7 @@ function renderCards() {
 
 async function toggleSummary(id, title, btn) {
   const box = document.getElementById('summary-' + id);
-  if (box.classList.contains('visible') && box.textContent && !box.textContent.includes('A gerar')) {
+  if (box.classList.contains('visible') && box.textContent && !box.textContent.includes('gerar')) {
     box.classList.remove('visible'); return;
   }
   box.classList.add('visible');
@@ -226,20 +304,53 @@ async function toggleSummary(id, title, btn) {
   if (text) box.textContent = text;
 }
 
-async function listenSummary(id, btn) {
-  if (currentUtterance) { stopSpeech(); btn.textContent = '🔊 Ouvir'; return; }
+async function listenSummary(id, title, btn) {
+  if (speechSynthesis.speaking) { stopSpeech(); return; }
   let text = summaries[id];
   if (!text) {
-    btn.textContent = '⏳...';
-    btn.disabled = true;
-    const title = PAPERS.find(p => p.id === id)?.title || '';
+    btn.textContent = '⏳...'; btn.disabled = true;
     text = await getSummary(id, title);
     btn.disabled = false;
-    if (!text) { btn.textContent = '🔊 Ouvir'; return; }
+    if (!text) return;
     const box = document.getElementById('summary-' + id);
     box.textContent = text; box.classList.add('visible');
   }
-  speak(text, btn);
+  speak(text, 'Resumo', 'tts-' + id);
+}
+
+async function listenFull(id, title, btn) {
+  if (speechSynthesis.speaking) { stopSpeech(); return; }
+  btn.textContent = '⏳ A preparar...'; btn.disabled = true;
+  let text = fullTexts[id];
+  if (!text) text = await getFullText(id, title);
+  btn.disabled = false;
+  btn.textContent = '🎧 Ouvir PT';
+  if (!text) return;
+  const box = document.getElementById('full-' + id);
+  box.textContent = text; box.classList.add('visible');
+  speak(text, 'Artigo completo', 'tts-' + id);
+}
+
+async function listenFullEn(id, title, btn) {
+  if (speechSynthesis.speaking) { stopSpeech(); return; }
+  btn.textContent = '⏳ A preparar...'; btn.disabled = true;
+  let text = fullTextsEn[id];
+  if (!text) text = await getFullTextEn(id, title);
+  btn.disabled = false;
+  btn.textContent = '🇬🇧 Ouvir EN';
+  if (!text) return;
+  const box = document.getElementById('full-' + id);
+  box.textContent = text; box.classList.add('visible');
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'en-US';
+  utter.rate = 0.88;
+  const enVoice = speechSynthesis.getVoices().find(v => v.lang.startsWith('en'));
+  if (enVoice) utter.voice = enVoice;
+  speechSynthesis.speak(utter);
+  currentUtterance = utter;
+  const bar = document.getElementById('tts-' + id);
+  if (bar) { bar.classList.add('visible'); bar.querySelector('.tts-label').textContent = 'Artigo EN a reproduzir...'; }
+  utter.onend = () => { if(bar) bar.classList.remove('visible'); };
 }
 
 function toggleStudied(id, btn) {
