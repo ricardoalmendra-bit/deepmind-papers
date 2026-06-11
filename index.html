@@ -58,7 +58,7 @@
 
 <div class="header">
   <h1>📄 DeepMind Papers</h1>
-  <p>Lê e ouve resumos das publicações &nbsp;|&nbsp; v1.2 — gemini-1.5-flash</p>
+  <p>Lê e ouve resumos das publicações &nbsp;|&nbsp; v1.3 — gemini-2.5-flash</p>
 </div>
 
 <div class="api-bar">
@@ -151,8 +151,8 @@ async function getSummary(id, title) {
 
   const isAIzaKey = apiKey.startsWith('AIza');
   const fetchUrl = isAIzaKey
-    ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
-    : `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`;
+    ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
+    : `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
   const fetchHeaders = isAIzaKey
     ? { 'Content-Type': 'application/json' }
     : { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey };
