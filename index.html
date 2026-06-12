@@ -57,12 +57,16 @@
 
 <div class="header">
   <h1>📄 DeepMind Papers</h1>
-  <p>Lê e ouve resumos das publicações &nbsp;|&nbsp; v1.7 — Neural TTS</p>
+  <p>Lê e ouve resumos das publicações &nbsp;|&nbsp; v1.8 — Neural TTS + Pausa</p>
 </div>
 
 <div class="api-bar">
-  <input type="password" id="apiKey" placeholder="Cola aqui a tua chave Gemini API..." />
-  <button onclick="saveKey()">Guardar</button>
+  <input type="password" id="apiKey" placeholder="Chave Gemini (resumos)..." />
+  <button onclick="saveKey()">💾</button>
+</div>
+<div class="api-bar" style="border-top:1px solid #f0f0f0;">
+  <input type="password" id="ttsKey" placeholder="Chave TTS (leitura neural)..." />
+  <button onclick="saveTtsKey()">💾</button>
 </div>
 
 <div class="stats-bar">
@@ -120,6 +124,7 @@ const PAPERS = [
 ];
 
 let apiKey = localStorage.getItem('gemini_key') || '';
+let ttsKey = localStorage.getItem('tts_key') || '';
 let studied = JSON.parse(localStorage.getItem('studied') || '{}');
 let summaries = JSON.parse(localStorage.getItem('summaries') || '{}');
 let fullTexts = JSON.parse(localStorage.getItem('fullTexts') || '{}');
@@ -140,7 +145,11 @@ loadVoice();
 
 function saveKey() {
   const k = document.getElementById('apiKey').value.trim();
-  if (k) { apiKey = k; localStorage.setItem('gemini_key', k); alert('Chave guardada!'); document.getElementById('apiKey').value = ''; }
+  if (k) { apiKey = k; localStorage.setItem('gemini_key', k); alert('Chave Gemini guardada!'); document.getElementById('apiKey').value = ''; }
+}
+function saveTtsKey() {
+  const k = document.getElementById('ttsKey').value.trim();
+  if (k) { ttsKey = k; localStorage.setItem('tts_key', k); alert('Chave TTS guardada!'); document.getElementById('ttsKey').value = ''; }
 }
 function saveFromModal() {
   const k = document.getElementById('modalKey').value.trim();
@@ -297,12 +306,15 @@ Escreve de forma fluida e natural para ser ouvido (não lido), sem bullets, sem 
 // Google Cloud TTS Neural
 async function speakNeural(text, lang, barId, btnEl, btnLabel) {
   stopSpeech();
+  const keyToUse = ttsKey || apiKey;
+  if (!keyToUse) { document.getElementById('modal').classList.add('open'); return; }
+  
   const bar = document.getElementById(barId);
   if (bar) { bar.classList.add('visible'); bar.querySelector('.tts-label').textContent = 'A sintetizar voz neural...'; }
 
   const voice = lang === 'pt-PT'
-    ? { languageCode: 'pt-PT', name: 'pt-PT-Chirp3-HD-Aoife' }
-    : { languageCode: 'en-US', name: 'en-US-Chirp3-HD-Aoife' };
+    ? { languageCode: 'pt-PT', name: 'pt-PT-Wavenet-E' }
+    : { languageCode: 'en-US', name: 'en-US-Chirp3-HD-Aoede' };
 
   // Split text into chunks of max 4500 chars (API limit is 5000)
   const chunks = [];
@@ -321,7 +333,7 @@ async function speakNeural(text, lang, barId, btnEl, btnLabel) {
   let processed = 0;
 
   async function fetchChunk(chunk) {
-    const res = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+    const res = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${ttsKey || apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -347,7 +359,8 @@ async function speakNeural(text, lang, barId, btnEl, btnLabel) {
     if (fill) fill.style.width = pct + '%';
     if (lbl) lbl.textContent = (lang === 'pt-PT' ? '🎧 PT' : '🇬🇧 EN') + ' — ' + pct + '%';
     processed++;
-    audio.onended = () => { playing = false; playQueue(); };
+    isPaused = false;
+  audio.onended = () => { playing = false; isPaused = false; playQueue(); };
     audio.onerror = () => { playing = false; playQueue(); };
     await audio.play();
   }
@@ -375,6 +388,20 @@ async function speakNeural(text, lang, barId, btnEl, btnLabel) {
 }
 
 let currentAudio = null;
+let isPaused = false;
+
+function togglePause(btn) {
+  if (!currentAudio) return;
+  if (isPaused) {
+    currentAudio.play();
+    isPaused = false;
+    btn.textContent = '⏸ Pausa';
+  } else {
+    currentAudio.pause();
+    isPaused = true;
+    btn.textContent = '▶ Retomar';
+  }
+}
 
 function speak(text, label, barId) {
   speakNeural(text, 'pt-PT', barId, null, label);
@@ -383,6 +410,7 @@ function speak(text, label, barId) {
 function stopSpeech() {
   speechSynthesis.cancel();
   currentUtterance = null;
+  isPaused = false;
   if (window._ttsStop) { window._ttsStop(); window._ttsStop = null; }
   if (currentAudio) { currentAudio.pause(); currentAudio = null; }
   document.querySelectorAll('.tts-bar').forEach(b => b.classList.remove('visible'));
@@ -420,6 +448,7 @@ function renderCards() {
       <div class="tts-bar" id="tts-${p.id}">
         <span class="tts-label">A reproduzir...</span>
         <div class="progress-bar"><div class="progress-fill"></div></div>
+        <button onclick="togglePause(this)">⏸ Pausa</button>
         <button onclick="stopSpeech()">⏹ Parar</button>
       </div>
     `;
@@ -495,7 +524,8 @@ function toggleStudied(id, btn) {
   updateStats();
 }
 
-if (apiKey) document.getElementById('apiKey').placeholder = 'Chave guardada ✓ (podes substituir)';
+if (apiKey) document.getElementById('apiKey').placeholder = 'Gemini: Chave guardada ✓';
+if (ttsKey) document.getElementById('ttsKey').placeholder = 'TTS: Chave guardada ✓';
 renderCards();
 </script>
 </body>
