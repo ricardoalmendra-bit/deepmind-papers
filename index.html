@@ -57,7 +57,7 @@
 
 <div class="header">
   <h1>📄 DeepMind Papers</h1>
-  <p>Lê e ouve resumos das publicações &nbsp;|&nbsp; v1.6 — gemini-2.5-flash</p>
+  <p>Lê e ouve resumos das publicações &nbsp;|&nbsp; v1.7 — Neural TTS</p>
 </div>
 
 <div class="api-bar">
@@ -294,38 +294,104 @@ Escreve de forma fluida e natural para ser ouvido (não lido), sem bullets, sem 
   return text || 'Não foi possível obter o artigo completo.';
 }
 
-function speak(text, label, barId) {
+// Google Cloud TTS Neural
+async function speakNeural(text, lang, barId, btnEl, btnLabel) {
   stopSpeech();
   const bar = document.getElementById(barId);
-  const chunks = text.match(/[^.!?]+[.!?]+/g) || [text];
-  let i = 0;
+  if (bar) { bar.classList.add('visible'); bar.querySelector('.tts-label').textContent = 'A sintetizar voz neural...'; }
 
-  function speakChunk() {
-    if (i >= chunks.length) { if(bar) bar.classList.remove('visible'); return; }
-    const utter = new SpeechSynthesisUtterance(chunks[i]);
-    utter.lang = 'pt-PT';
-    utter.rate = 0.92;
-    if (ptVoice) utter.voice = ptVoice;
-    currentUtterance = utter;
-    const pct = Math.round((i / chunks.length) * 100);
-    const fill = bar ? bar.querySelector('.progress-fill') : null;
-    const lbl = bar ? bar.querySelector('.tts-label') : null;
-    if (fill) fill.style.width = pct + '%';
-    if (lbl) lbl.textContent = label + ' — ' + pct + '%';
-    utter.onend = () => { i++; speakChunk(); };
-    speechSynthesis.speak(utter);
+  const voice = lang === 'pt-PT'
+    ? { languageCode: 'pt-PT', name: 'pt-PT-Chirp3-HD-Aoife' }
+    : { languageCode: 'en-US', name: 'en-US-Chirp3-HD-Aoife' };
+
+  // Split text into chunks of max 4500 chars (API limit is 5000)
+  const chunks = [];
+  let remaining = text;
+  while (remaining.length > 0) {
+    if (remaining.length <= 4500) { chunks.push(remaining); break; }
+    let cut = remaining.lastIndexOf('. ', 4500);
+    if (cut === -1) cut = 4500;
+    chunks.push(remaining.substring(0, cut + 1));
+    remaining = remaining.substring(cut + 1).trim();
   }
 
-  if (bar) bar.classList.add('visible');
-  speakChunk();
+  const audioQueue = [];
+  let playing = false;
+  let stopped = false;
+  let processed = 0;
+
+  async function fetchChunk(chunk) {
+    const res = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        input: { text: chunk },
+        voice: voice,
+        audioConfig: { audioEncoding: 'MP3', speakingRate: 0.95, pitch: 0 }
+      })
+    });
+    const data = await res.json();
+    if (data.audioContent) return data.audioContent;
+    throw new Error(data.error?.message || 'TTS error');
+  }
+
+  async function playQueue() {
+    if (stopped || audioQueue.length === 0) return;
+    playing = true;
+    const b64 = audioQueue.shift();
+    const audio = new Audio('data:audio/mp3;base64,' + b64);
+    currentAudio = audio;
+    const fill = bar ? bar.querySelector('.progress-fill') : null;
+    const lbl = bar ? bar.querySelector('.tts-label') : null;
+    const pct = Math.round((processed / chunks.length) * 100);
+    if (fill) fill.style.width = pct + '%';
+    if (lbl) lbl.textContent = (lang === 'pt-PT' ? '🎧 PT' : '🇬🇧 EN') + ' — ' + pct + '%';
+    processed++;
+    audio.onended = () => { playing = false; playQueue(); };
+    audio.onerror = () => { playing = false; playQueue(); };
+    await audio.play();
+  }
+
+  // Fetch all chunks and play progressively
+  for (let i = 0; i < chunks.length; i++) {
+    if (stopped) break;
+    try {
+      const b64 = await fetchChunk(chunks[i]);
+      audioQueue.push(b64);
+      if (!playing) playQueue();
+    } catch(e) {
+      console.error('TTS chunk error:', e);
+      // Fallback to browser TTS for this chunk
+      const utter = new SpeechSynthesisUtterance(chunks[i]);
+      utter.lang = lang; utter.rate = 0.92;
+      if (lang === 'pt-PT' && ptVoice) utter.voice = ptVoice;
+      speechSynthesis.speak(utter);
+    }
+  }
+
+  window._ttsStop = () => { stopped = true; if(currentAudio) { currentAudio.pause(); currentAudio = null; } };
+  if (bar) { const fill = bar.querySelector('.progress-fill'); if(fill) fill.style.width = '100%'; }
+  setTimeout(() => { if(bar && !playing) bar.classList.remove('visible'); }, 1000);
+}
+
+let currentAudio = null;
+
+function speak(text, label, barId) {
+  speakNeural(text, 'pt-PT', barId, null, label);
 }
 
 function stopSpeech() {
   speechSynthesis.cancel();
   currentUtterance = null;
+  if (window._ttsStop) { window._ttsStop(); window._ttsStop = null; }
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
   document.querySelectorAll('.tts-bar').forEach(b => b.classList.remove('visible'));
   document.querySelectorAll('.btn-listen, .btn-listen-full, .btn-listen-en').forEach(b => {
-    if (b.textContent.includes('Parar') || b.textContent.includes('...')) { if (b.classList.contains('btn-listen-full')) b.textContent = '🎧 Ouvir PT'; else if (b.classList.contains('btn-listen-en')) b.textContent = '🇬🇧 Ouvir EN'; else b.textContent = '🔊 Ouvir resumo'; }
+    if (b.textContent.includes('Parar') || b.textContent.includes('...')) {
+      if (b.classList.contains('btn-listen-full')) b.textContent = '🎧 Ouvir PT';
+      else if (b.classList.contains('btn-listen-en')) b.textContent = '🇬🇧 Ouvir EN';
+      else b.textContent = '🔊 Ouvir resumo';
+    }
   });
 }
 
@@ -417,16 +483,7 @@ async function listenFullEn(id, title, btn) {
   if (!text) return;
   const box = document.getElementById('full-' + id);
   box.textContent = text; box.classList.add('visible');
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = 'en-US';
-  utter.rate = 0.88;
-  const enVoice = speechSynthesis.getVoices().find(v => v.lang.startsWith('en'));
-  if (enVoice) utter.voice = enVoice;
-  speechSynthesis.speak(utter);
-  currentUtterance = utter;
-  const bar = document.getElementById('tts-' + id);
-  if (bar) { bar.classList.add('visible'); bar.querySelector('.tts-label').textContent = 'Artigo EN a reproduzir...'; }
-  utter.onend = () => { if(bar) bar.classList.remove('visible'); };
+  speakNeural(text, 'en-US', 'tts-' + id, btn, 'Artigo EN');
 }
 
 function toggleStudied(id, btn) {
