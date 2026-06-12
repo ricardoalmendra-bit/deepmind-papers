@@ -57,7 +57,7 @@
 
 <div class="header">
   <h1>📄 DeepMind Papers</h1>
-  <p>Lê e ouve resumos das publicações &nbsp;|&nbsp; v1.5 — gemini-2.5-flash</p>
+  <p>Lê e ouve resumos das publicações &nbsp;|&nbsp; v1.6 — gemini-2.5-flash</p>
 </div>
 
 <div class="api-bar">
@@ -176,10 +176,82 @@ async function callGemini(prompt) {
 
 async function getSummary(id, title) {
   if (summaries[id]) return summaries[id];
-  const prompt = `Faz um resumo em português de Portugal, claro e conciso (máximo 150 palavras), do artigo científico intitulado: "${title}". URL: https://deepmind.google/research/publications/${id}/\n\nDestacar: (1) o problema que resolve, (2) a abordagem principal, (3) os resultados ou conclusões principais.`;
+  const prompt = `És um assistente que fala EXCLUSIVAMENTE português de Portugal (PT-PT), nunca português do Brasil.
+REGRAS OBRIGATÓRIAS de português europeu:
+- Usa "tu/você" nunca "você" informal brasileiro
+- Usa "telemóvel" não "celular", "autocarro" não "ônibus", "computador" não "computador" está bem
+- Usa "ficheiro" não "arquivo", "utilizador" não "usuário"
+- Usa "ecrã" não "tela", "aplicação" não "app" quando formal
+- Conjuga verbos à europeia: "tens" não "você tem"
+
+Faz um resumo CONCISO (máximo 150 palavras) em português de Portugal do artigo científico:
+Título: "${title}"
+URL: https://deepmind.google/research/publications/${id}/
+
+Estrutura:
+1. Problema que resolve
+2. Abordagem principal  
+3. Resultados e conclusões
+
+Responde APENAS em português de Portugal europeu.`;
   const text = await callGemini(prompt);
   if (text) { summaries[id] = text; localStorage.setItem('summaries', JSON.stringify(summaries)); }
   return text || 'Não foi possível gerar o resumo. Verifica a tua chave API.';
+}
+
+async function findArxivPdf(title) {
+  // Search arxiv for the paper by title
+  try {
+    const query = encodeURIComponent(title.replace(/[^a-zA-Z0-9 ]/g, ' ').trim());
+    const arxivUrl = `https://export.arxiv.org/api/query?search_query=ti:${query}&max_results=1`;
+    const res = await fetch(arxivUrl);
+    const xml = await res.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xml, 'text/xml');
+    const entry = doc.querySelector('entry');
+    if (!entry) return null;
+    const links = entry.querySelectorAll('link');
+    for (const link of links) {
+      if (link.getAttribute('type') === 'application/pdf') {
+        return link.getAttribute('href');
+      }
+    }
+    // Try to build PDF url from id
+    const idEl = entry.querySelector('id');
+    if (idEl) {
+      const arxivId = idEl.textContent.split('/abs/')[1];
+      if (arxivId) return `https://arxiv.org/pdf/${arxivId}`;
+    }
+  } catch(e) {}
+  return null;
+}
+
+async function extractPdfText(pdfUrl) {
+  // Use Gemini to read the PDF via URL
+  try {
+    const isAIza = apiKey.startsWith('AIza');
+    const url = isAIza
+      ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
+      : `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
+    const headers = isAIza
+      ? { 'Content-Type': 'application/json' }
+      : { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey };
+    const res = await fetch(url, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: "Read this scientific paper PDF and provide a complete detailed summary in flowing prose suitable for listening during a car journey. Include: introduction, methodology, experiments, results, conclusions. No bullet points, no markdown, only natural flowing text. Maximum 1000 words." },
+            { file_data: { mime_type: "application/pdf", file_uri: pdfUrl } }
+          ]
+        }]
+      })
+    });
+    const data = await res.json();
+    if (data.candidates && data.candidates[0])
+      return data.candidates[0].content.parts[0].text;
+  } catch(e) {}
+  return null;
 }
 
 async function getFullTextEn(id, title) {
@@ -202,7 +274,11 @@ Write in fluent natural English for listening (not reading). No bullets, no mark
 
 async function getFullText(id, title) {
   if (fullTexts[id]) return fullTexts[id];
-  const prompt = `Tens acesso ao conhecimento do artigo científico "${title}" publicado pelo Google DeepMind (https://deepmind.google/research/publications/${id}/). 
+  const prompt = `És um assistente que fala EXCLUSIVAMENTE português de Portugal (PT-PT europeu), NUNCA português do Brasil.
+Vocabulário obrigatório PT-PT: "ficheiro","utilizador","ecrã","telemóvel","autocarro","pedonais","portanto","contudo","todavia".
+PROIBIDO usar: "você"(informal),"celular","ônibus","arquivo","usuário","tela","aí","né","tá".
+
+Apresenta em português de Portugal uma versão completa do artigo científico "${title}" publicado pelo Google DeepMind (https://deepmind.google/research/publications/${id}/). 
 
 Por favor apresenta em português de Portugal uma versão completa e detalhada do artigo para ser lida em voz alta durante uma viagem de carro. Deve incluir:
 1. Título e contexto
