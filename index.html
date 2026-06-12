@@ -57,7 +57,7 @@
 
 <div class="header">
   <h1>📄 DeepMind Papers</h1>
-  <p>Lê e ouve resumos das publicações &nbsp;|&nbsp; v1.8 — Neural TTS + Pausa</p>
+  <p>Lê e ouve resumos das publicações &nbsp;|&nbsp; v1.9 — Neural TTS + Pausa + Fixes</p>
 </div>
 
 <div class="api-bar">
@@ -411,6 +411,7 @@ function stopSpeech() {
   speechSynthesis.cancel();
   currentUtterance = null;
   isPaused = false;
+  document.querySelectorAll('.btn-listen, .btn-listen-full, .btn-listen-en').forEach(b => b.disabled = false);
   if (window._ttsStop) { window._ttsStop(); window._ttsStop = null; }
   if (currentAudio) { currentAudio.pause(); currentAudio = null; }
   document.querySelectorAll('.tts-bar').forEach(b => b.classList.remove('visible'));
@@ -476,40 +477,76 @@ async function toggleSummary(id, title, btn) {
 }
 
 async function listenSummary(id, title, btn) {
+  // If already playing, stop
+  if (currentAudio && !isPaused) { stopSpeech(); return; }
   if (speechSynthesis.speaking) { stopSpeech(); return; }
+  
+  // Disable all listen buttons to prevent overlap
+  document.querySelectorAll('.btn-listen, .btn-listen-full, .btn-listen-en').forEach(b => b.disabled = true);
+  
   let text = summaries[id];
   if (!text) {
-    btn.textContent = '⏳...'; btn.disabled = true;
+    btn.textContent = '⏳...';
     text = await getSummary(id, title);
-    btn.disabled = false;
-    if (!text) return;
+    if (!text) { document.querySelectorAll('.btn-listen, .btn-listen-full, .btn-listen-en').forEach(b => b.disabled = false); return; }
     const box = document.getElementById('summary-' + id);
     box.textContent = text; box.classList.add('visible');
   }
+  
+  document.querySelectorAll('.btn-listen, .btn-listen-full, .btn-listen-en').forEach(b => b.disabled = false);
   speak(text, 'Resumo', 'tts-' + id);
 }
 
 async function listenFull(id, title, btn) {
+  if (currentAudio && !isPaused) { stopSpeech(); return; }
   if (speechSynthesis.speaking) { stopSpeech(); return; }
-  btn.textContent = '⏳ A preparar...'; btn.disabled = true;
+  
+  document.querySelectorAll('.btn-listen, .btn-listen-full, .btn-listen-en').forEach(b => b.disabled = true);
+  btn.textContent = '⏳ A preparar...';
+  
   let text = fullTexts[id];
   if (!text) text = await getFullText(id, title);
-  btn.disabled = false;
+  
+  document.querySelectorAll('.btn-listen, .btn-listen-full, .btn-listen-en').forEach(b => b.disabled = false);
   btn.textContent = '🎧 Ouvir PT';
-  if (!text) return;
+  
+  if (!text || text.includes('Não foi possível')) {
+    // Try once more with simpler prompt
+    const bar = document.getElementById('tts-' + id);
+    const lbl = bar ? bar.querySelector('.tts-label') : null;
+    if (lbl) { bar.classList.add('visible'); lbl.textContent = 'A tentar novamente...'; }
+    const simplePrompt = `Em português de Portugal (europeu), escreve um texto de 600 palavras sobre o artigo de IA intitulado "${title}" para ser ouvido em viagem de carro. Texto fluido, sem marcadores, sem markdown.`;
+    text = await callGemini(simplePrompt);
+    if (bar) bar.classList.remove('visible');
+    if (text) { fullTexts[id] = text; localStorage.setItem('fullTexts', JSON.stringify(fullTexts)); }
+  }
+  
+  if (!text) { alert('Não foi possível obter o texto. Tenta novamente.'); return; }
   const box = document.getElementById('full-' + id);
   box.textContent = text; box.classList.add('visible');
   speak(text, 'Artigo completo', 'tts-' + id);
 }
 
 async function listenFullEn(id, title, btn) {
+  if (currentAudio && !isPaused) { stopSpeech(); return; }
   if (speechSynthesis.speaking) { stopSpeech(); return; }
-  btn.textContent = '⏳ A preparar...'; btn.disabled = true;
+  
+  document.querySelectorAll('.btn-listen, .btn-listen-full, .btn-listen-en').forEach(b => b.disabled = true);
+  btn.textContent = '⏳ A preparar...';
+  
   let text = fullTextsEn[id];
   if (!text) text = await getFullTextEn(id, title);
-  btn.disabled = false;
+  
+  document.querySelectorAll('.btn-listen, .btn-listen-full, .btn-listen-en').forEach(b => b.disabled = false);
   btn.textContent = '🇬🇧 Ouvir EN';
-  if (!text) return;
+  
+  if (!text || text.includes('Could not')) {
+    const simplePrompt = `Write a 600-word flowing text about the AI research paper titled "${title}" suitable for listening during a car journey. Natural prose, no bullet points, no markdown.`;
+    text = await callGemini(simplePrompt);
+    if (text) { fullTextsEn[id] = text; localStorage.setItem('fullTextsEn', JSON.stringify(fullTextsEn)); }
+  }
+  
+  if (!text) { alert('Could not retrieve text. Please try again.'); return; }
   const box = document.getElementById('full-' + id);
   box.textContent = text; box.classList.add('visible');
   speakNeural(text, 'en-US', 'tts-' + id, btn, 'Artigo EN');
